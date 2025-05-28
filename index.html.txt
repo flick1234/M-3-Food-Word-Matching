@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เกมจับคู่คำศัพท์</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #f0f9ff; /* Light blue background */
+        }
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 80px; /* Ensure cards have a minimum height */
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+        }
+        .card.selected {
+            border: 3px solid #2563eb; /* Blue border for selected */
+            transform: scale(1.05);
+        }
+        .card.matched {
+            opacity: 0.5;
+            pointer-events: none;
+            background-color: #d1fae5; /* Light green for matched */
+        }
+        .feedback-correct {
+            color: #16a34a; /* Green */
+            font-weight: bold;
+        }
+        .feedback-incorrect {
+            color: #dc2626; /* Red */
+            font-weight: bold;
+        }
+        .btn {
+            background-color: #3b82f6; /* Blue */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .btn:hover {
+            background-color: #2563eb; /* Darker blue */
+        }
+        .btn-secondary {
+            background-color: #6b7280; /* Gray */
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563; /* Darker gray */
+        }
+        /* Responsive grid for game items */
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); /* Adjusted minmax for text */
+            gap: 1rem;
+        }
+        @media (min-width: 640px) { /* sm breakpoint */
+            .game-grid {
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div id="app-container" class="w-full max-w-2xl mx-auto">
+
+        <div id="start-page" class="p-6 md:p-8 bg-white rounded-xl shadow-xl text-center">
+            <h1 class="text-3xl font-bold mb-6 text-blue-600">เกมจับคู่คำศัพท์-คำแปล</h1>
+            <img src="https://placehold.co/300x150/3b82f6/ffffff?text=Word+Matching+Game&font=kanit" alt="ภาพเกมคำศัพท์" class="mx-auto mb-6 rounded-lg">
+            <div class="mb-4">
+                <label for="studentName" class="block text-lg font-medium text-gray-700 mb-1 text-left">ชื่อ-นามสกุล:</label>
+                <input type="text" id="studentName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="เช่น เด็กหญิงใจดี เรียนเก่ง">
+            </div>
+            <div class="mb-6">
+                <label for="studentId" class="block text-lg font-medium text-gray-700 mb-1 text-left">เลขที่:</label>
+                <input type="text" id="studentId" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="เช่น 01">
+            </div>
+            <button id="startGameBtn" class="btn w-full text-lg">เริ่มเกม!</button>
+        </div>
+
+        <div id="game-page" class="hidden p-6 md:p-8 bg-white rounded-xl shadow-xl">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                <div class="text-xl font-bold text-blue-700">
+                    <span class="block sm:inline">เวลา: <span id="timer" class="text-red-500">60</span> วินาที</span>
+                </div>
+                <div class="text-xl font-bold text-green-600">
+                    <span class="block sm:inline">คะแนน: <span id="score">0</span></span>
+                </div>
+            </div>
+
+            <div id="feedback-message" class="text-center text-xl mb-4 h-8"></div>
+
+            <h2 class="text-2xl font-semibold mb-3 text-center text-gray-800">คำศัพท์ภาษาอังกฤษ:</h2>
+            <div id="english-word-container" class="game-grid mb-6">
+                </div>
+
+            <h2 class="text-2xl font-semibold mb-3 text-center text-gray-800">คำแปลภาษาไทย:</h2>
+            <div id="thai-translation-container" class="game-grid">
+                </div>
+             <button id="next-set-btn" class="btn mt-6 w-full text-lg hidden">ชุดคำศัพท์ถัดไป / ดูสรุป</button>
+        </div>
+
+        <div id="summary-page" class="hidden p-6 md:p-8 bg-white rounded-xl shadow-xl text-center">
+            <h1 class="text-3xl font-bold mb-6 text-blue-600">สรุปผลคะแนน</h1>
+            <img src="https://placehold.co/150x150/3b82f6/ffffff?text=Trophy&font=kanit" alt="ภาพถ้วยรางวัล" class="mx-auto mb-6 rounded-full">
+            <p class="text-xl mb-2">ชื่อ: <span id="summaryName" class="font-semibold text-gray-700"></span></p>
+            <p class="text-xl mb-2">เลขที่: <span id="summaryId" class="font-semibold text-gray-700"></span></p>
+            <p class="text-xl mb-4">คะแนนที่ได้: <span id="summaryScore" class="font-bold text-green-600 text-3xl"></span></p>
+            <p id="encouragement" class="text-lg text-gray-600 mb-6"></p>
+            <button id="playAgainBtn" class="btn w-full text-lg">เล่นอีกครั้ง</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const startPage = document.getElementById('start-page');
+        const gamePage = document.getElementById('game-page');
+        const summaryPage = document.getElementById('summary-page');
+
+        const studentNameInput = document.getElementById('studentName');
+        const studentIdInput = document.getElementById('studentId');
+        const startGameBtn = document.getElementById('startGameBtn');
+
+        const timerDisplay = document.getElementById('timer');
+        const scoreDisplay = document.getElementById('score');
+        const englishWordContainer = document.getElementById('english-word-container'); // Changed from imageContainer
+        const thaiTranslationContainer = document.getElementById('thai-translation-container'); // Changed from wordContainer
+        const feedbackMessage = document.getElementById('feedback-message');
+        const nextSetBtn = document.getElementById('next-set-btn'); // Still here but not used in single-set game
+
+        const summaryName = document.getElementById('summaryName');
+        const summaryId = document.getElementById('summaryId');
+        const summaryScore = document.getElementById('summaryScore');
+        const encouragement = document.getElementById('encouragement');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+
+        // --- Game State ---
+        let studentName = '';
+        let studentId = '';
+        let score = 0;
+        let timeLeft = 60;
+        let timerInterval;
+        let currentVocabularySet = [];
+        let selectedEnglishWord = null; // Changed from selectedImage
+        let selectedThaiTranslation = null; // Changed from selectedWord
+        let matchedPairs = 0;
+        let totalPairsInSet = 0;
+
+        const vocabulary = [
+            { id: 1, word: 'Garlic Bread', translation: 'ขนมปังกระเทียม' },
+            { id: 2, word: 'Shrimp Cocktail', translation: 'กุ้งค็อกเทล' },
+            { id: 3, word: 'Roast Beef', translation: 'เนื้ออบ' },
+            { id: 4, word: 'Salmon', translation: 'ปลาแซลมอน' },
+            { id: 5, word: 'Chips', translation: 'มันฝรั่งทอด' },
+            { id: 6, word: 'Mixed Vegetables', translation: 'ผักรวมมิตร' },
+            { id: 7, word: 'Apple Pie', translation: 'พายแอปเปิ้ล' },
+            { id: 8, word: 'Ice Cream', translation: 'ไอศกรีม' },
+            { id: 9, word: 'Mineral Water', translation: 'น้ำแร่' },
+            { id: 10, word: 'Tea and Coffee', translation: 'ชาและกาแฟ' }
+        ];
+
+        // --- Utility Functions ---
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // --- Page Navigation ---
+        function showPage(pageElement) {
+            startPage.classList.add('hidden');
+            gamePage.classList.add('hidden');
+            summaryPage.classList.add('hidden');
+            pageElement.classList.remove('hidden');
+        }
+
+        // --- Game Logic ---
+        function setupNewSet() {
+            currentVocabularySet = shuffleArray([...vocabulary]); 
+            totalPairsInSet = currentVocabularySet.length;
+            matchedPairs = 0;
+
+            englishWordContainer.innerHTML = ''; // Clear previous English words
+            thaiTranslationContainer.innerHTML = ''; // Clear previous Thai translations
+            feedbackMessage.textContent = '';
+            selectedEnglishWord = null;
+            selectedThaiTranslation = null;
+            nextSetBtn.classList.add('hidden'); // Hide button for now
+
+            const englishWords = shuffleArray(currentVocabularySet.map(item => ({ id: item.id, text: item.word })));
+            const thaiTranslations = shuffleArray(currentVocabularySet.map(item => ({ id: item.id, text: item.translation })));
+
+            englishWords.forEach(engWord => {
+                const cardDiv = document.createElement('div');
+                cardDiv.classList.add('card', 'p-3', 'h-20', 'md:h-24'); // Standard card styling
+                cardDiv.dataset.id = engWord.id;
+                cardDiv.textContent = engWord.text;
+                cardDiv.addEventListener('click', () => handleEnglishWordClick(cardDiv, engWord.id));
+                englishWordContainer.appendChild(cardDiv);
+            });
+
+            thaiTranslations.forEach(thaiWord => {
+                const cardDiv = document.createElement('div');
+                cardDiv.classList.add('card', 'p-3', 'h-20', 'md:h-24'); // Standard card styling
+                cardDiv.dataset.id = thaiWord.id;
+                cardDiv.textContent = thaiWord.text;
+                cardDiv.addEventListener('click', () => handleThaiTranslationClick(cardDiv, thaiWord.id));
+                thaiTranslationContainer.appendChild(cardDiv);
+            });
+        }
+
+        function handleEnglishWordClick(element, id) {
+            if (element.classList.contains('matched')) return;
+
+            if (selectedEnglishWord) {
+                selectedEnglishWord.element.classList.remove('selected');
+            }
+            selectedEnglishWord = { element, id };
+            element.classList.add('selected');
+            checkMatch();
+        }
+
+        function handleThaiTranslationClick(element, id) {
+            if (element.classList.contains('matched')) return;
+
+            if (selectedThaiTranslation) {
+                selectedThaiTranslation.element.classList.remove('selected');
+            }
+            selectedThaiTranslation = { element, id };
+            element.classList.add('selected');
+            checkMatch();
+        }
+
+        function checkMatch() {
+            if (selectedEnglishWord && selectedThaiTranslation) {
+                if (selectedEnglishWord.id === selectedThaiTranslation.id) {
+                    score++;
+                    matchedPairs++;
+                    scoreDisplay.textContent = score;
+                    feedbackMessage.textContent = 'ถูกต้องค่ะ! เก่งมาก 🎉';
+                    feedbackMessage.className = 'text-center text-xl mb-4 h-8 feedback-correct';
+
+                    selectedEnglishWord.element.classList.add('matched');
+                    selectedThaiTranslation.element.classList.add('matched');
+                    selectedEnglishWord.element.classList.remove('selected');
+                    selectedThaiTranslation.element.classList.remove('selected');
+                    
+                } else {
+                    feedbackMessage.textContent = 'ยังไม่ถูกนะคะ ลองใหม่ค่ะ 🧐';
+                    feedbackMessage.className = 'text-center text-xl mb-4 h-8 feedback-incorrect';
+                    
+                    setTimeout(() => {
+                        if (selectedEnglishWord && !selectedEnglishWord.element.classList.contains('matched')) {
+                            selectedEnglishWord.element.classList.remove('selected');
+                        }
+                        if (selectedThaiTranslation && !selectedThaiTranslation.element.classList.contains('matched')) {
+                            selectedThaiTranslation.element.classList.remove('selected');
+                        }
+                        // Only clear the feedback if it's still the "incorrect" message
+                        if (feedbackMessage.textContent === 'ยังไม่ถูกนะคะ ลองใหม่ค่ะ 🧐') {
+                           setTimeout(() => feedbackMessage.textContent = '', 1000); 
+                        }
+                    }, 800);
+                }
+                // Reset selections only if they were not part of a successful match
+                if (!selectedEnglishWord?.element.classList.contains('matched')) selectedEnglishWord = null;
+                if (!selectedThaiTranslation?.element.classList.contains('matched')) selectedThaiTranslation = null;
+
+
+                if (matchedPairs === totalPairsInSet) {
+                    feedbackMessage.textContent = 'เยี่ยมมาก! จับคู่ครบแล้วค่ะ 👍';
+                    feedbackMessage.className = 'text-center text-xl mb-4 h-8 feedback-correct';
+                    setTimeout(endGame, 1200); // Wait a bit before ending
+                }
+            }
+        }
+
+        function startGame() {
+            studentName = studentNameInput.value.trim();
+            studentId = studentIdInput.value.trim();
+
+            if (!studentName || !studentId) {
+                // Using a custom modal or inline message would be better than alert
+                // For now, keeping alert for simplicity as per original structure
+                const tempAlert = document.createElement('div');
+                tempAlert.style.position = 'fixed';
+                tempAlert.style.top = '20px';
+                tempAlert.style.left = '50%';
+                tempAlert.style.transform = 'translateX(-50%)';
+                tempAlert.style.backgroundColor = 'white';
+                tempAlert.style.padding = '20px';
+                tempAlert.style.border = '1px solid #f5c6cb';
+                tempAlert.style.borderRadius = '8px';
+                tempAlert.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+                tempAlert.style.zIndex = '1000';
+                tempAlert.style.color = '#721c24';
+                tempAlert.innerHTML = 'กรุณากรอกชื่อและเลขที่ให้ครบถ้วนนะคะ <button onclick="this.parentElement.remove()" style="margin-left: 15px; padding: 5px 10px; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; cursor: pointer;">ตกลง</button>';
+                document.body.appendChild(tempAlert);
+                setTimeout(() => { if(tempAlert) tempAlert.remove(); }, 5000); // Auto-remove after 5 seconds
+                return;
+            }
+
+            score = 0;
+            timeLeft = 60; 
+            matchedPairs = 0;
+            scoreDisplay.textContent = score;
+            timerDisplay.textContent = timeLeft;
+            
+            setupNewSet();
+            showPage(gamePage);
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval); 
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            showPage(summaryPage);
+            summaryName.textContent = studentName;
+            summaryId.textContent = studentId;
+            summaryScore.textContent = score;
+
+            let encouragementText = '';
+            if (score >= totalPairsInSet * 0.8) { 
+                encouragementText = 'สุดยอดไปเลยค่ะ! คะแนนดีมาก ทำได้เยี่ยมมากค่ะ! 🌟';
+            } else if (score >= totalPairsInSet * 0.5) { 
+                encouragementText = 'เก่งมากค่ะ! พยายามได้ดีมากเลยนะคะ สู้ๆ ต่อไปค่ะ! 😊';
+            } else {
+                encouragementText = 'พยายามได้ดีแล้วค่ะ! ฝึกฝนอีกนิดนะคะ เป็นกำลังใจให้ค่ะ! 💪';
+            }
+            encouragement.textContent = encouragementText;
+        }
+
+        function resetGame() {
+            studentNameInput.value = '';
+            studentIdInput.value = '';
+            showPage(startPage);
+        }
+
+        // --- Event Listeners ---
+        startGameBtn.addEventListener('click', startGame);
+        playAgainBtn.addEventListener('click', resetGame);
+        
+        // Initialize
+        showPage(startPage);
+
+    </script>
+</body>
+</html>
